@@ -7,6 +7,11 @@ const routes: Array<RouteRecordRaw> = [
 		component: () => import(/* webpackChunkName: "simple" */ '../simple/SimpleGame.vue')
 	},
 	{
+		path: '/shared-memory-objects',
+		name: 'shared-memory-objects',
+		component: () => import(/* webpackChunkName: "shared-memory-objects" */ '../shared-memory-objects/SharedMemoryObjects.vue')
+	},
+	{
 		path: '/bitecs',
 		name: 'bitecs',
 		component: () => import(/* webpackChunkName: "bitecs" */ '../bitecs/BitECSGame.vue')

@@ -1,8 +1,9 @@
 <template>
   <nav>
-	<router-link to="/multithreaded">Multithreaded</router-link> |
-	<router-link to="/bitecs">BitECS</router-link> |
-    <router-link to="/simple">Simple Entity</router-link>
+	<router-link to="/multithreaded">Custom ECS (MT)</router-link> |
+	<router-link to="/shared-memory-objects">Entity System (MT)</router-link> |
+	<router-link to="/bitecs">BitECS(ST) </router-link> |
+    <router-link to="/simple">Simple Entity (ST)</router-link>
   </nav>
   <router-view/>
 </template>
