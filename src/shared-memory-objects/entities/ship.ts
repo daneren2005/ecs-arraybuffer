@@ -7,21 +7,60 @@ import Station from './station';
 import PhaserMath from 'phaser/src/math';
 import degreesToRadians from '@/math/degrees-to-radians';
 import { ENTITY_TYPES } from './types';
+import World from './world';
+import { SharedAllocatedMemory } from '@daneren2005/shared-memory-objects';
 
 export default class Ship extends Entity {
 	station: Station;
-	speed = 100;
-	velocityX = 0;
-	velocityY = 0;
+	stationMemory: Uint32Array;
 
-	constructor(station: Station) {
-		super(station.world, {
-			size: 0,
-			type: ENTITY_TYPES.ship
-		});
-		this.station = station;
-		this.width = 10;
-		this.height = 5;
+	velocityMemory: Float32Array;
+	get speed() {
+		return this.velocityMemory[0];
+	}
+	set speed(value: number) {
+		this.velocityMemory[0] = value;
+	}
+	get velocityX() {
+		return this.velocityMemory[1];
+	}
+	set velocityX(value: number) {
+		this.velocityMemory[1] = value;
+	}
+	get velocityY() {
+		return this.velocityMemory[2];
+	}
+	set velocityY(value: number) {
+		this.velocityMemory[2] = value;
+	}
+
+	constructor(world: World, config: ShipConfig | SharedAllocatedMemory) {
+		if('bufferPosition' in config) {
+			super(world, config);
+			this.velocityMemory = this.getArrayFromMemory(Float32Array, 3);
+			this.stationMemory = this.getArrayFromMemory(Uint32Array, 1);
+
+			this.station = this.world.getEntityByPointer(this.stationMemory[0]) as Station;
+		} else {
+			super(world, {
+				size: 4,
+				type: ENTITY_TYPES.ship
+			});
+			this.velocityMemory = this.getArrayFromMemory(Float32Array, 3);
+			this.stationMemory = this.getArrayFromMemory(Uint32Array, 1);
+
+			this.width = 10;
+			this.height = 5;
+			this.speed = 100;
+
+			this.shields = 1;
+			this.maxShields = 1;
+			this.timeToRegenerateShields = 1;
+
+			this.station = config.station;
+			this.stationMemory[0] = this.station.pointer;
+		}
+
 	}
 
 	get color(): number {
@@ -29,10 +68,6 @@ export default class Ship extends Entity {
 	}
 
 	update(delta: number) {
-		this.x += this.velocityX * delta;
-		this.y += this.velocityY * delta;
-		this.keepInBounds();
-
 		let nearesetEnemy = this.getNearestEnemy();
 		if(nearesetEnemy) {
 			// Bounce off enemy doing damage
@@ -60,20 +95,6 @@ export default class Ship extends Entity {
 		}
 
 		super.update(delta);
-	}
-	
-	keepInBounds() {
-		if(this.x < 0) {
-			this.velocityX = Math.abs(this.velocityX);
-		} else if(this.x > this.world.bounds.width) {
-			this.velocityX = -Math.abs(this.velocityX);
-		}
-
-		if(this.y < 0) {
-			this.velocityY = Math.abs(this.velocityY);
-		} else if(this.y > this.world.bounds.height) {
-			this.velocityY = -Math.abs(this.velocityY);
-		}
 	}
 
 	getNearestEnemy(): Entity | null {
@@ -118,14 +139,24 @@ export default class Ship extends Entity {
 		target.takeDamage(1);
 
 		if(target.dead) {
-			this.station.money += enemyWorth;
+			this.station.addMoney(enemyWorth);
 		}
 		if(this.dead) {
 			if(target instanceof Station) {
-				target.money++;
+				target.addMoney(1);
 			} else if(target instanceof Ship) {
-				target.station.money++;
+				target.station.addMoney(1);
 			}
 		}
 	}
+
+	die() {
+		this.station.removeShip(this);
+
+		super.die();
+	}
+}
+
+interface ShipConfig {
+	station: Station
 }

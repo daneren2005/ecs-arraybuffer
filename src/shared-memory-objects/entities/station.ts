@@ -1,53 +1,80 @@
+import { SharedAllocatedMemory, SharedList } from '@daneren2005/shared-memory-objects';
 import Entity from './entity';
 import Ship from './ship';
 import { ENTITY_TYPES } from './types';
 import World from './world';
+import EntityList from './entity-list';
 
+const MONEY_INDEX = 0;
+const COLOR_INDEX = 1;
 export default class Station extends Entity {
-	color = 0xff0000;
-	ships: Array<Entity> = [];
-	money = 0;
+	ships: EntityList;
 
-	constructor(world: World) {
-		super(world, {
-			size: 0,
-			type: ENTITY_TYPES.station
-		});
-		this.key = 'station';
-		this.width = 20;
-		this.height = 20;
-		this.shields = 2;
-		this.maxShields = 2;
-		this.timeToRegenerateShields = 5;
+	moneyMemory: Uint32Array;
+	get money() {
+		return Atomics.load(this.moneyMemory, MONEY_INDEX);
+	}
+	set money(value: number) {
+		Atomics.store(this.moneyMemory, MONEY_INDEX, value);
+	}
+	get color() {
+		return this.moneyMemory[COLOR_INDEX];
+	}
+	set color(value: number) {
+		this.moneyMemory[COLOR_INDEX] = value;
 	}
 
-	update(delta: number) {
-		super.update(delta);
+	constructor(world: World, memory?: SharedAllocatedMemory) {
+		if(memory) {
+			super(world, memory);
+			this.moneyMemory = this.getArrayFromMemory(Uint32Array, 2);
 
-		if(this.money > 0) {
-			let ship = new Ship(this);
-			ship.x = this.x;
-			ship.y = this.y;
-			ship.velocityX = (Math.random() > 0.5 ? -1 : 1) * Math.random() * ship.speed;
-			ship.velocityY = (Math.random() > 0.5 ? -1 : 1) * Math.random() * ship.speed;
-
-			this.ships.push(ship);
-			ship.on('dead', () => {
-				let index = this.ships.indexOf(ship);
-				if(index >= 0) {
-					this.ships.splice(index, 1);
-				}
+			this.ships = new EntityList(this.world, {
+				initWithBlock: this.getAllocatedFromMemory(EntityList.ALLOCATE_COUNT)
 			});
-			this.world.addEntity(ship);
-			this.money--;
+		} else {
+			super(world, {
+				size: 2 + EntityList.ALLOCATE_COUNT,
+				type: ENTITY_TYPES.station
+			});
+			this.moneyMemory = this.getArrayFromMemory(Uint32Array, 2);
+
+			this.ships = new EntityList(this.world, {
+				firstBlock: this.getAllocatedFromMemory(EntityList.ALLOCATE_COUNT)
+			});
+			
+			this.width = 20;
+			this.height = 20;
+			this.shields = 2;
+			this.maxShields = 2;
+			this.timeToRegenerateShields = 5;
+		}
+		this.key = 'station';
+	}
+
+	addMoney(value: number) {
+		Atomics.add(this.moneyMemory, MONEY_INDEX, value);
+	}
+	subtractMoney(value: number) {
+		Atomics.sub(this.moneyMemory, MONEY_INDEX, value);
+	}
+
+	removeShip(ship: Ship) {
+		if(!this.dead) {
+			this.ships.delete(ship);
 		}
 	}
 
 	die() {
-		super.die();
+		if(this.dead) {
+			return;
+		}
 
 		this.ships.forEach(ship => {
 			ship.die();
 		});
+
+		this.ships.free();
+		super.die();
 	}
 }

@@ -3,21 +3,32 @@ import Entity from './entity';
 import Station from './station';
 import { Quadtree, Rectangle } from '@timohausmann/quadtree-ts';
 import euclideanDistance from '@/math/euclidean-distance';
-import { AllocatedMemory, MAX_BYTE_OFFSET_LENGTH, MemoryHeap, MemoryHeapMemory, SharedAllocatedMemory, SharedList } from '@daneren2005/shared-memory-objects';
+import { AllocatedMemory, MAX_BYTE_OFFSET_LENGTH, MemoryHeap, MemoryHeapMemory, SharedAllocatedMemory, SharedList, getPointer } from '@daneren2005/shared-memory-objects';
 import EntityList from './entity-list';
+import System from '../systems/system';
+import WorkerSystem from '../systems/worker-system';
+
+import VelocitySystemWorker from '../systems/velocity-system?worker';
+import UpdateHealthTimersSystemWorker from '../systems/update-health-timers-system?worker';
+import SpawnShipSystem from '../systems/spawn-ship-system?worker';
+import { ENTITY_TYPES } from './types';
+import Ship from './ship';
 
 const ID_INDEX = 0;
 const BOUNDS_WIDTH_INDEX = 1;
 const BOUNDS_HEIGHT_INDEX = 2;
 const ENTITIES_LIST_INDEX = 3;
-export default class World extends EventEmitter {
+export default class World {
 	static readonly ALLOCATE_COUNT = 3 + SharedList.ALLOCATE_COUNT;
 
+	// TODO: How do we clear entityCache when something is deleted in other thread?
 	entities: EntityList;
+	private readonly entityCache: Map<number, Entity> = new Map();
 	bounds: {
 		width: number,
 		height: number
 	};
+	systems: Array<System> = [];
 	// @ts-expect-error
 	quadtree: Quadtree;
 
@@ -25,12 +36,10 @@ export default class World extends EventEmitter {
 	protected readonly memory: AllocatedMemory;
 
 	constructor(config?: WorldMemory) {
-		super();
-
 		if(config) {
 			this.heap = new MemoryHeap(config.heap);
 			this.memory = new AllocatedMemory(this.heap, config.world);
-			this.entities = new EntityList(this.heap, {
+			this.entities = new EntityList(this, {
 				firstBlock: {
 					bufferPosition: this.memory.bufferPosition,
 					bufferByteOffset: this.memory.data.byteOffset + ENTITIES_LIST_INDEX * this.memory.data.BYTES_PER_ELEMENT
@@ -41,12 +50,14 @@ export default class World extends EventEmitter {
 				bufferSize: MAX_BYTE_OFFSET_LENGTH
 			});
 			this.memory = this.heap.allocUI32(World.ALLOCATE_COUNT);
-			this.entities = new EntityList(this.heap, {
+			this.entities = new EntityList(this, {
 				initWithBlock: {
 					bufferPosition: this.memory.bufferPosition,
 					bufferByteOffset: this.memory.data.byteOffset + ENTITIES_LIST_INDEX * this.memory.data.BYTES_PER_ELEMENT
 				}
 			});
+
+			this.initSystems();
 		}
 
 		let memory = this.memory;
@@ -88,13 +99,29 @@ export default class World extends EventEmitter {
 	}
 	addEntity(entity: Entity) {
 		this.entities.insert(entity);
-		entity.on('dead', () => {
-			this.removeEntity(entity);
-		});
-		this.emit('entity-added', entity);
 	}
 	removeEntity(entity: Entity) {
 		this.entities.delete(entity);
+	}
+	getEntityByPointer(entityPointer: number) {
+		let entity = this.entityCache.get(entityPointer);
+		if(!entity) {
+			let entityMemory = new AllocatedMemory(this.heap, getPointer(entityPointer));
+			let type = entityMemory.data[0];
+			if(type === ENTITY_TYPES.ship) {
+				entity = new Ship(this, entityMemory);
+			} else if(type === ENTITY_TYPES.station) {
+				entity = new Station(this, entityMemory);
+			}
+
+			if(entity) {
+				this.entityCache.set(entityPointer, entity);
+			} else {
+				console.warn(`Could not create entity from pointer ${entityPointer}`);
+			}
+		}
+
+		return entity;
 	}
 
 	update(delta: number) {
@@ -121,6 +148,26 @@ export default class World extends EventEmitter {
 
 			entity.update(delta);
 		});
+
+		this.systems.forEach(system => {
+			system.update(delta);
+		});
+	}
+
+	private initSystems() {
+		// TODO: CollisionSystem, MoveToTargetSystem, TargetEnemySystem
+		this.systems.push(new WorkerSystem(this, {
+			name: 'velocitySystem',
+			worker: new VelocitySystemWorker()
+		}));
+		this.systems.push(new WorkerSystem(this, {
+			name: 'updateHealthTimersSystemWorker',
+			worker: new UpdateHealthTimersSystemWorker()
+		}));
+		this.systems.push(new WorkerSystem(this, {
+			name: 'spawnShipSystem',
+			worker: new SpawnShipSystem()
+		}));
 	}
 
 	getNearestEntity(entity: Entity, filter: (entity: Entity) => boolean) {
@@ -160,9 +207,16 @@ export default class World extends EventEmitter {
 			world: this.memory.getSharedMemory()
 		};
 	}
+
+	destroy() {
+		this.systems.forEach(system => system.destroy());
+		this.systems = [];
+	}
 }
 
 interface WorldMemory {
 	heap: MemoryHeapMemory
 	world: SharedAllocatedMemory
 }
+
+export { WorldMemory };

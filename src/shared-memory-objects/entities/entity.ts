@@ -1,12 +1,11 @@
-import { EventEmitter } from 'eventemitter3';
 import World from './world';
 import { AllocatedMemory, SharedAllocatedMemory, TypedArrayConstructor } from '@daneren2005/shared-memory-objects';
 
 const TYPE_INDEX = 0;
 const ID_INDEX = 1;
 const DEAD_INDEX = 2;
-export default class Entity extends EventEmitter {
-	static readonly ALLOCATE_COUNT = 8;
+export default class Entity {
+	static readonly ALLOCATE_COUNT = 13;
 
 	readonly world: World;
 	protected readonly memory: AllocatedMemory;
@@ -56,30 +55,62 @@ export default class Entity extends EventEmitter {
 	set angle(value: number) {
 		this.positionMemory[4] = value;
 	}
-	type = 'entity';
 	key = 'boid';
-	shields = 1;
-	maxShields = 1;
-	timeToRegenerateShields = 1;
-	timeSinceShieldRegeneration = 0;
-	timeSinceTakenDamage = 0;
+
+	private shieldMemory: Float32Array;
+	get shields() {
+		return this.shieldMemory[0];
+	}
+	set shields(value: number) {
+		this.shieldMemory[0] = value;
+	}
+	get maxShields() {
+		return this.shieldMemory[1];
+	}
+	set maxShields(value: number) {
+		this.shieldMemory[1] = value;
+	}
+	get timeToRegenerateShields() {
+		return this.shieldMemory[2];
+	}
+	set timeToRegenerateShields(value: number) {
+		this.shieldMemory[2] = value;
+	}
+	get timeSinceShieldRegeneration() {
+		return this.shieldMemory[3];
+	}
+	set timeSinceShieldRegeneration(value: number) {
+		this.shieldMemory[3] = value;
+	}
+	get timeSinceTakenDamage() {
+		return this.shieldMemory[4];
+	}
+	set timeSinceTakenDamage(value: number) {
+		this.shieldMemory[4] = value;
+	}
+
+	getSprite?: (() => any);
 
 	constructor(world: World, config: EntityConfig | SharedAllocatedMemory) {
-		super();
-
 		this.world = world;
 
 		if('size' in config) {
 			this.memory = world.heap.allocUI32(config.size + Entity.ALLOCATE_COUNT);
 			this.memory.data[ID_INDEX] = world.getId();
+			this.memory.data[TYPE_INDEX] = config.type;
 		} else {
-			this.memory = new AllocatedMemory(world.heap, config);
+			if(config instanceof AllocatedMemory) {
+				this.memory = config;
+			} else {
+				this.memory = new AllocatedMemory(world.heap, config);
+			}
 		}
 
 		this._id = this.memory.data[ID_INDEX];
 		this.takenMemoryBytes += 3 * this.memory.data.BYTES_PER_ELEMENT;
 
 		this.positionMemory = this.getArrayFromMemory(Float32Array, 5);
+		this.shieldMemory = this.getArrayFromMemory(Float32Array, 5);
 	}
 
 	load(config: any) {
@@ -90,26 +121,12 @@ export default class Entity extends EventEmitter {
 	}
 
 	update(delta: number) {
-		this.timeSinceTakenDamage += delta;
-
-		if(this.shields < this.maxShields) {
-			this.timeSinceShieldRegeneration += delta;
-			if(this.timeSinceShieldRegeneration > this.timeToRegenerateShields) {
-				this.shields++;
-				this.timeSinceShieldRegeneration = 0;
-			}
-		}
+		
 	}
 
 	die() {
-		// Only emit dead once
-		if(this.dead) {
-			return;
-		}
-
 		this.dead = true;
-		this.emit('dead');
-
+		this.world.removeEntity(this);
 		this.memory.free();
 	}
 	canTakeDamage() {
@@ -144,6 +161,10 @@ export default class Entity extends EventEmitter {
 			bufferPosition: this.memory.bufferPosition,
 			bufferByteOffset: this.memory.data.byteOffset + startByteOffset
 		};
+	}
+	
+	get pointer(): number {
+		return this.memory.pointer;
 	}
 }
 

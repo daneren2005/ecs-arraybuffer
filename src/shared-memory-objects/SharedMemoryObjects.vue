@@ -1,12 +1,13 @@
 <template>
 	<div class="home">
 		<div class="list">
-			<div>Startup time: {{ startupTime.toFixed(2) }} ms</div>
-			<div>Update time: {{ minUpdateTime.toFixed(2) }} - {{ maxUpdateTime.toFixed(2) }} ({{ avgUpdateTime.toFixed(2) }} avg) ms</div>
+			<div style="color: red">mainThread: {{ minUpdateTime.toFixed(2) }} - {{ maxUpdateTime.toFixed(2) }} ({{ avgUpdateTime.toFixed(2) }} avg) ms</div>
+			<div v-for="system in systemUpdates" :key="system.name">{{ system.name }}: {{ system.max.toFixed(2) }} ({{ system.avg.toFixed(2) }} avg) ms</div>
+			<div></div>
 			<div>Memory: {{ world.heap.prettyMemory() }} </div>
 			<p/>
 
-			<div>Entities: {{ stationsCount }} stations and {{ shipsCount }} ships</div>
+			<div>Entities: {{ stationsCount }} stations and {{ shipsCount }} ships ({{ totalCount }})</div>
 			<span class="station-list" v-for="station in stationShips" :key="station.color" :style="{ color: station.displayColor }">{{ '#' + station.color.toString(16) }}: {{ station.ships }}</span>
 
 			<p/>
@@ -33,7 +34,9 @@ const maxUpdateTime = ref(0);
 const avgUpdateTime = ref(0);
 const stationsCount = ref(0);
 const shipsCount = ref(0);
+const totalCount = ref(0);
 const stationShips = ref([]) as Ref<Array<{ color: number, displayColor: string, ships: number }>>;
+const systemUpdates = ref([]) as Ref<Array<{ name: string, min: number, avg: number, max: number }>>;
 
 let game: Phaser.Game | null;
 onMounted(() => {
@@ -43,6 +46,8 @@ onMounted(() => {
 	const width = window.innerWidth / 3 * 2;
 	const height = window.innerHeight / 3 * 2;
 	let paused = false;
+	let add: any;
+	const sprites: Array<any> = [];
 	game = new Phaser.Game({
 		type: Phaser.AUTO,
 		width,
@@ -55,44 +60,7 @@ onMounted(() => {
 				this.load.image('shield', 'shield3.png');
 			},
 			create() {
-				// TODO: Get rid of events so we can create/kill in other threads
-				world.on('entity-added', (entity: Entity) => {
-					let image = this.add.image(entity.x, entity.y, entity.key) as any;
-					image.setScale(entity.width / image.width, entity.height / image.height);
-					image.shieldImage = this.add.image(entity.x, entity.y, 'shield');
-					image.shieldImage.setScale(entity.width / image.shieldImage.width * 2, entity.height / image.shieldImage.height * 2);
-					image.shieldImage.visible = entity.shields > 0;
-					if(entity instanceof Station || entity instanceof Ship) {
-						image.setTint(entity.color);
-					}
-
-					['x', 'y', 'angle'].forEach(property => {
-						const spriteProperty = property === 'angle' ? 'rotation' : property;
-						Object.defineProperty(image, spriteProperty, {
-							get() {
-								// @ts-expect-error
-								return entity[property] ?? 0;
-							}
-						});
-
-						Object.defineProperty(image.shieldImage, property, {
-							get() {
-								// @ts-expect-error
-								return entity[property];
-							}
-						});
-					});
-					entity.on('dead', () => {
-						image.destroy();
-						image.shieldImage.destroy();
-					});
-
-					// TODO: Won't work anymore
-					entity.on('shields-updated', (newValue: number) => {
-						image.shieldImage.visible = newValue > 0;
-					});
-				});
-
+				add = this.add;
 				let start = performance.now();
 				world.load(generateScene({
 					stations: 6,
@@ -120,6 +88,15 @@ onMounted(() => {
 				this.input.keyboard?.on('keydown-SPACE', () => {
 					paused = !paused;
 				});
+
+				systemUpdates.value = world.systems.map(system => {
+					return {
+						name: system.name,
+						min: 0,
+						avg: 0,
+						max: 0
+					};
+				});
 			},
 			update(time: number, delta: number) {
 				if(paused) {
@@ -127,6 +104,60 @@ onMounted(() => {
 				}
 
 				let start = performance.now();
+
+				// Add new entity sprites
+				world.entities.forEach(entity => {
+					if(!entity.getSprite) {
+						let image = add.image(entity.x, entity.y, entity.key) as any;
+						image.setScale(entity.width / image.width, entity.height / image.height);
+						image.shieldImage = add.image(entity.x, entity.y, 'shield');
+						image.shieldImage.setScale(entity.width / image.shieldImage.width * 2, entity.height / image.shieldImage.height * 2);
+						image.shieldImage.visible = entity.shields > 0;
+						if(entity instanceof Station || entity instanceof Ship) {
+							image.setTint(entity.color);
+						}
+
+						['x', 'y', 'angle'].forEach(property => {
+							const spriteProperty = property === 'angle' ? 'rotation' : property;
+							Object.defineProperty(image, spriteProperty, {
+								get() {
+									// @ts-expect-error
+									return entity[property] ?? 0;
+								}
+							});
+
+							Object.defineProperty(image.shieldImage, property, {
+								get() {
+									// @ts-expect-error
+									return entity[property];
+								}
+							});
+						});
+
+						['_alphaBL', '_alphaBR', '_alphaTL', '_alphaTR'].forEach(prop => {
+							Object.defineProperty(image.shieldImage, prop, {
+								get: () => {
+									return entity.shields > 0 ? 1 : 0;
+								}
+							});
+						});
+
+						entity.getSprite = () => image;
+						image.entity = entity;
+						sprites.push(image);
+					}
+				});
+
+				// Remove old sprites
+				sprites.forEach(sprite => {
+					if(sprite.entity.dead) {
+						sprite.destroy();
+						sprite.shieldImage.destroy();
+
+						sprites.splice(sprites.indexOf(sprite), 1);
+					}
+				});
+
 				world.update(delta / 1_000);
 				let end = performance.now();
 
@@ -147,6 +178,7 @@ onMounted(() => {
 
 					stationsCount.value = world.entities.filter(entity => entity instanceof Station).length;
 					shipsCount.value = world.entities.filter(entity => entity instanceof Ship).length;
+					totalCount.value = world.entities.length;
 
 					let stations = world.entities.filter(entity => entity instanceof Station) as Array<Station>;
 					stationShips.value.forEach(val => {
@@ -158,6 +190,13 @@ onMounted(() => {
 							val.ships = 0;
 						}
 					});
+
+					systemUpdates.value = world.systems.map(system => {
+						return {
+							name: system.name,
+							...system.getRuntimeStats()
+						};
+					});
 				}
 			}
 		}
@@ -167,13 +206,16 @@ onBeforeUnmount(() => {
 	if(game) {
 		game.destroy(true);
 		game = null;
-	} 
+	}
+	if(world) {
+		world.destroy();
+	}
 });
 
 function addShips() {
 	let stations = world.entities.filter(entity => entity instanceof Station) as Array<Station>;
 	stations.forEach(station => {
-		station.money += 10;
+		station.addMoney(10);
 	});
 }
 </script>
