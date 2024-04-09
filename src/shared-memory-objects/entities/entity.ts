@@ -119,18 +119,14 @@ export default class Entity {
 			this[key] = config[key];
 		});
 	}
-
-	update(delta: number) {
-		
-	}
-
+	
 	die() {
 		this.dead = true;
 		this.world.removeEntity(this);
 		this.memory.free();
 	}
 	canTakeDamage() {
-		return this.timeSinceTakenDamage >= 0.2;
+		return this.timeSinceTakenDamage >= 0.2 && !this.dead;
 	}
 	takeDamage(damage: number) {
 		if(!this.canTakeDamage()) {

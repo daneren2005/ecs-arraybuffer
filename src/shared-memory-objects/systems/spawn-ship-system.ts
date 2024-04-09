@@ -13,7 +13,7 @@ class SpawnShipSystem {
 	run() {
 		let stations = this.world.entities.filter(entity => entity instanceof Station) as Array<Station>;
 		stations.forEach(station => {
-			if(!station.dead && station.money > 0) {
+			if(station.money > 0) {
 				let ship = new Ship(this.world, {
 					station
 				});

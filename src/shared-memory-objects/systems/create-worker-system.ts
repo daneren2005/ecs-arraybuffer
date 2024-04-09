@@ -9,6 +9,7 @@ export default function createWorkerSystem(initWorker: InitWorker) {
 			workerRunner = initWorker(world);
 		} else if(e.data.elapsedTime) {
 			workerRunner.run(e.data.elapsedTime);
+			world.garbageCollect();
 
 			self.postMessage({
 				done: true

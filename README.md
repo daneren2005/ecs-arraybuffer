@@ -21,6 +21,47 @@ This is my first attempt to use an ECS system, and I think I tried to hard to co
 
 https://daneren2005.github.io/ecs-sharedarraybuffer-playground/#/bitecs
 
+## Custom ES backend by a shared memory pool
+This is another version backed by @daneren2005/shared-memory-objects to allow allocating chunks of memory for each entity and then mapping entity properties to it.  That library allows allocating/freeing memory backed by a SharedArrayBuffer and some simple data structures like an array backed by TypedArrays.  We are only passing the heap (which wraps the SharedArrayBuffers) and the world's memory pointer to each thread and then each thread can iterate over the entities to run updates on them from that.
+
+ie: 
+```
+class Entity {
+	memory: AllocatedMemory
+
+	get x() {
+		return Atomics.load(this.memory.data, 0);
+	}
+	set x(value: number) {
+		Atomics.store(this.memory.data, 0, value);
+	}
+
+	constructor(heap: MemoryHeap, memory?: SharedAllocatedMemory) {
+		if(memory) {
+			// Recreating memory from another thread
+			this.memory = new AllocatedMemory(world.heap, config);
+		} else {
+			// Initializing the entity
+			this.memory = heap.allocUI32(1);
+		}
+	}
+}
+```
+
+Pros:
+* Can use OOP and entities as classes (obviously subjective to how you like to work)
+* Easy to share data structures between threads since we have a generic pool of expandable memory
+
+Cons
+* All of the difficulty of manually managing memory in C++ without any of the speed
+* Lots of boiler plate for each property to be backed by a memory location - also easy to screw up and have two properties going to one location
+
+TODO
+* Creating quad-tree or collision system in one thread and re-using in others
+* Control which entities are initialized in other threads (ie: spawn-ship-system doesn't need to create a local copy of each ship to run)
+
+
+
 ## Custom ECS backed by SharedArrayBuffers
 In this version, we have a quick and dirty ECS system where the components are hard coded and each SharedArrayBuffer is a large fixed length int array.  Dead entity id's are recycled and re-used again.  Each component is using SharedArrayBuffers and Atomics to load and update properties.  Each system runs in it's own thread.  All the main thread is doing every frame is looping through every entity and updating it's visual properties (ie: position, angle, etc...).  As a huge number of ships are added stuff starts to not work 100% correctly since some of the sub-systems take too long to process, but visually continue to hum along nicely.  That could probably be fixed by sharding the heavy systems into multiple threads.  For a proof of concept I think this is good enough.
 

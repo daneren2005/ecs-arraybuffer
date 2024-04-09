@@ -47,9 +47,11 @@ export default class EntityList implements Iterable<{ entity: Entity, deleteCurr
 			}
 		}
 	}
-	forEach(callback: (entity: Entity) => void) {
+	forEach<T extends Entity>(callback: (entity: T) => void, filter?: (entity: Entity) => boolean) {
 		for(let { entity } of this) {
-			callback(entity);
+			if(!filter || filter(entity)) {
+				callback(entity as T);
+			}
 		}
 	}
 

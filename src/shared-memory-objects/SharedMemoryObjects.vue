@@ -10,7 +10,7 @@
 			<div>Entities: {{ stationsCount }} stations and {{ shipsCount }} ships ({{ totalCount }})</div>
 			<span class="station-list" v-for="station in stationShips" :key="station.color" :style="{ color: station.displayColor }">{{ '#' + station.color.toString(16) }}: {{ station.ships }}</span>
 
-			<p/>
+			<br/>
 			<button @click="addShips">Add Ships</button>
 		</div>
 
@@ -22,7 +22,6 @@
 import { ref, onMounted, onBeforeUnmount, Ref } from 'vue';
 import Phaser from 'phaser';
 import World from './entities/world';
-import Entity from './entities/entity';
 import generateScene from '@/data/generate-scene';
 import Station from './entities/station';
 import Ship from './entities/ship';
@@ -62,8 +61,10 @@ onMounted(() => {
 			create() {
 				add = this.add;
 				let start = performance.now();
+
+				// this.cameras.main.zoomTo(0.5, 0);
 				world.load(generateScene({
-					stations: 6,
+					stations: 8,
 					shipsPerStation: 100,
 					width,
 					height
@@ -222,7 +223,7 @@ function addShips() {
 
 <style scoped>
 .list {
-	margin-bottom: 1em;
+	margin-bottom: 0.5em;
 }
 .station-list {
 	margin-left: 0.5em;

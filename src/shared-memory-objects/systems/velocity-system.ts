@@ -1,6 +1,8 @@
+import degreesToRadians from '@/math/degrees-to-radians';
 import Ship from '../entities/ship';
 import World from '../entities/world';
 import createWorkerSystem from './create-worker-system';
+import computeAngle from '@/math/compute-angle';
 
 class VelocitySystem {
 	world: World;
@@ -15,16 +17,14 @@ class VelocitySystem {
 			entity.x += entity.velocityX * elapsedTime;
 			entity.y += entity.velocityY * elapsedTime;
 
-			if(entity.x < 0) {
-				entity.velocityX = Math.abs(entity.velocityX);
-			} else if(entity.x > this.world.bounds.width) {
-				entity.velocityX = -Math.abs(entity.velocityX);
+			if(entity.x < 0 || entity.x > this.world.bounds.width) {
+				entity.velocityX = -entity.velocityX;
+				entity.angle = degreesToRadians(computeAngle(entity.velocityX, entity.velocityY));
 			}
 	
-			if(entity.y < 0) {
-				entity.velocityY = Math.abs(entity.velocityY);
-			} else if(entity.y > this.world.bounds.height) {
-				entity.velocityY = -Math.abs(entity.velocityY);
+			if(entity.y < 0 || entity.y > this.world.bounds.height) {
+				entity.velocityY = -entity.velocityY;
+				entity.angle = degreesToRadians(computeAngle(entity.velocityX, entity.velocityY));
 			}
 		});
 	}
