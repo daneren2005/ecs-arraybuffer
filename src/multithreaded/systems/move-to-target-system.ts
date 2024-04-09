@@ -1,6 +1,7 @@
 import computeAngle from '@/math/compute-angle';
 import { getEntitiesWithComponents } from '../entities/get-entities';
 import WorldConfig from '../entities/world-config';
+import normalize from '@/math/normalize';
 
 export default function moveToTargetSystem(world: WorldConfig) {
 	const position = world.components.position;
@@ -29,22 +30,5 @@ export default function moveToTargetSystem(world: WorldConfig) {
 
 	function getMoveTowardsForce(eid: number, otherEid: number) {
 		return normalize(Atomics.load(position.x, otherEid) - Atomics.load(position.x, eid), Atomics.load(position.y, otherEid) - Atomics.load(position.y, eid));
-	}
-
-	function normalize(x: number, y: number) {
-		let len = x * x + y * y;
-		if(len > 0) {
-			len = 1 / Math.sqrt(len);
-
-			return {
-				x: x * len,
-				y: y * len
-			};
-		} else {
-			return {
-				x,
-				y
-			};
-		}
 	}
 }

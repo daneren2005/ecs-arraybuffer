@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@daneren2005/shared-memory-objects": "^0.0.2",
+    "bitecs": "^0.3.40",
     "core-js": "^3.36.0",
     "phaser": "^3.80.1",
     "vue": "^3.4.21",
@@ -22,7 +24,6 @@
     "@typescript-eslint/parser": "^7.1.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/eslint-config-typescript": "^12.0.0",
-    "bitecs": "^0.3.40",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.22.0",
     "typescript": "~5.3.3",

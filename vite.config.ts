@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
 				'Cross-Origin-Opener-Policy': 'same-origin',
 				'Cross-Origin-Embedder-Policy': 'require-corp'
 			}
+		},
+
+		optimizeDeps: {
+			exclude: ['@daneren2005/shared-memory-objects']
 		}
 	};
 });
