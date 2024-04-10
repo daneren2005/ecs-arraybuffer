@@ -24,6 +24,8 @@ https://daneren2005.github.io/ecs-sharedarraybuffer-playground/#/bitecs
 ## Custom ES backend by a shared memory pool
 This is another version backed by @daneren2005/shared-memory-objects to allow allocating chunks of memory for each entity and then mapping entity properties to it.  That library allows allocating/freeing memory backed by a SharedArrayBuffer and some simple data structures like an array backed by TypedArrays.  We are only passing the heap (which wraps the SharedArrayBuffers) and the world's memory pointer to each thread and then each thread can iterate over the entities to run updates on them from that.
 
+https://daneren2005.github.io/ecs-sharedarraybuffer-playground/#/shared-memory-objects
+
 ie: 
 ```
 class Entity {

@@ -2,15 +2,6 @@ import Entity from './entity';
 import Station from './station';
 import { AllocatedMemory, MAX_BYTE_OFFSET_LENGTH, MemoryHeap, MemoryHeapMemory, SharedAllocatedMemory, SharedList, getPointer } from '@daneren2005/shared-memory-objects';
 import EntityList from './entity-list';
-import System from '../systems/system';
-import WorkerSystem from '../systems/worker-system';
-
-import VelocitySystemWorker from '../systems/velocity-system?worker';
-import UpdateHealthTimersSystemWorker from '../systems/update-health-timers-system?worker';
-import SpawnShipSystemWorker from '../systems/spawn-ship-system?worker';
-import CollisionSystemWorker from '../systems/collision-system?worker';
-import TargetEnemySystemWorker from '../systems/target-enemy-system?worker';
-import MoveToTargetSystem from '../systems/move-to-target-system?worker';
 
 import { ENTITY_TYPES } from './types';
 import Ship from './ship';
@@ -28,7 +19,6 @@ export default class World {
 		width: number,
 		height: number
 	};
-	systems: Array<System> = [];
 
 	readonly heap: MemoryHeap;
 	protected readonly memory: AllocatedMemory;
@@ -54,8 +44,6 @@ export default class World {
 					bufferByteOffset: this.memory.data.byteOffset + ENTITIES_LIST_INDEX * this.memory.data.BYTES_PER_ELEMENT
 				}
 			});
-
-			this.initSystems();
 		}
 
 		let memory = this.memory;
@@ -131,10 +119,6 @@ export default class World {
 	}
 
 	update(delta: number) {
-		this.systems.forEach(system => {
-			system.update(delta);
-		});
-
 		this.garbageCollect();
 	}
 
@@ -147,33 +131,6 @@ export default class World {
 		});
 	}
 
-	private initSystems() {
-		this.systems.push(new WorkerSystem(this, {
-			name: 'velocitySystem',
-			worker: new VelocitySystemWorker()
-		}));
-		this.systems.push(new WorkerSystem(this, {
-			name: 'updateHealthTimersSystemWorker',
-			worker: new UpdateHealthTimersSystemWorker()
-		}));
-		this.systems.push(new WorkerSystem(this, {
-			name: 'spawnShipSystem',
-			worker: new SpawnShipSystemWorker()
-		}));
-		this.systems.push(new WorkerSystem(this, {
-			name: 'collisionSystem',
-			worker: new CollisionSystemWorker()
-		}));
-		this.systems.push(new WorkerSystem(this, {
-			name: 'targetEnemySystem',
-			worker: new TargetEnemySystemWorker()
-		}));
-		this.systems.push(new WorkerSystem(this, {
-			name: 'moveToTargetSystem',
-			worker: new MoveToTargetSystem()
-		}));
-	}
-
 	getId() {
 		return Atomics.add(this.memory.data, ID_INDEX, 1);
 	}
@@ -183,11 +140,6 @@ export default class World {
 			heap: this.heap.getSharedMemory(),
 			world: this.memory.getSharedMemory()
 		};
-	}
-
-	destroy() {
-		this.systems.forEach(system => system.destroy());
-		this.systems = [];
 	}
 }
 

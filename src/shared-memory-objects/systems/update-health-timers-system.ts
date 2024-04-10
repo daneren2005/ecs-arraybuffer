@@ -1,7 +1,7 @@
 import World from '../entities/world';
 import createWorkerSystem from './create-worker-system';
 
-class VelocitySystem {
+class UpdateHealthTimerSystem {
 	world: World;
 
 	constructor(world: World) {
@@ -23,4 +23,4 @@ class VelocitySystem {
 	}
 }
 
-createWorkerSystem((world: World) => new VelocitySystem(world));
+createWorkerSystem((world: World) => new UpdateHealthTimerSystem(world));
