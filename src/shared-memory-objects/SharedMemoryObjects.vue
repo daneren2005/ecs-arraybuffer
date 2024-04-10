@@ -21,12 +21,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, Ref } from 'vue';
 import Phaser from 'phaser';
-import World from './entities/world';
 import generateScene from '@/data/generate-scene';
 import Station from './entities/station';
 import Ship from './entities/ship';
+import MainWorld from './entities/main-world';
 
-let world = new World();
+let world = new MainWorld();
 const startupTime = ref(0);
 const minUpdateTime = ref(0);
 const maxUpdateTime = ref(0);

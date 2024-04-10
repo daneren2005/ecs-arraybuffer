@@ -8,25 +8,27 @@
     "start": "npm run serve",
     "build": "vite build",
     "lint": "eslint src/ --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --ignore-path .gitignore",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "update": "ncu",
+    "update:commit": "ncu -u && npm install"
   },
   "dependencies": {
-    "@daneren2005/shared-memory-objects": "^0.0.2",
+    "@daneren2005/shared-memory-objects": "^0.0.3",
     "bitecs": "^0.3.40",
-    "core-js": "^3.36.0",
+    "core-js": "^3.36.1",
     "phaser": "^3.80.1",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@timohausmann/quadtree-ts": "^2.2.2",
-    "@typescript-eslint/eslint-plugin": "^7.1.0",
-    "@typescript-eslint/parser": "^7.1.0",
+    "@typescript-eslint/eslint-plugin": "^7.6.0",
+    "@typescript-eslint/parser": "^7.6.0",
     "@vitejs/plugin-vue": "^5.0.4",
-    "@vue/eslint-config-typescript": "^12.0.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-vue": "^9.22.0",
-    "typescript": "~5.3.3",
-    "vite": "^5.1.4"
+    "@vue/eslint-config-typescript": "^13.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^9.24.1",
+    "typescript": "~5.4.4",
+    "vite": "^5.2.8"
   }
 }
