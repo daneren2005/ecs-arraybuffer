@@ -8,6 +8,7 @@ import SpawnShipSystemWorker from '../systems/spawn-ship-system?worker';
 import CollisionSystemWorker from '../systems/collision-system?worker';
 import TargetEnemySystemWorker from '../systems/target-enemy-system?worker';
 import MoveToTargetSystem from '../systems/move-to-target-system?worker';
+import { GrowBufferData } from '@daneren2005/shared-memory-objects';
 
 export default class MainWorld extends World {
 	systems: Array<System> = [];
@@ -51,6 +52,19 @@ export default class MainWorld extends World {
 			name: 'moveToTargetSystem',
 			worker: new MoveToTargetSystem()
 		}));
+	}
+
+	growMemoryFromThread(memoryGrows: Array<GrowBufferData>, fromSystem: WorkerSystem) {
+		super.growMemoryFromThread(memoryGrows, fromSystem);
+
+		// Update other threads memory
+		this.systems.forEach(system => {
+			if(system === fromSystem || !(system instanceof WorkerSystem)) {
+				return;
+			}
+
+			system.pendingUpdates.memoryGrown.push(...memoryGrows);
+		});
 	}
 
 	destroy() {

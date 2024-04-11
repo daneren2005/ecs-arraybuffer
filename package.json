@@ -13,7 +13,7 @@
     "update:commit": "ncu -u && npm install"
   },
   "dependencies": {
-    "@daneren2005/shared-memory-objects": "^0.0.3",
+    "@daneren2005/shared-memory-objects": "^0.0.4",
     "bitecs": "^0.3.40",
     "core-js": "^3.36.1",
     "phaser": "^3.80.1",

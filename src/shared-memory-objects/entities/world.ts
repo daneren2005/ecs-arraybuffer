@@ -1,10 +1,11 @@
 import Entity from './entity';
 import Station from './station';
-import { AllocatedMemory, MAX_BYTE_OFFSET_LENGTH, MemoryHeap, MemoryHeapMemory, SharedAllocatedMemory, SharedList, getPointer } from '@daneren2005/shared-memory-objects';
+import { AllocatedMemory, GrowBufferData, MAX_BYTE_OFFSET_LENGTH, MemoryHeap, MemoryHeapMemory, SharedAllocatedMemory, SharedList, getPointer } from '@daneren2005/shared-memory-objects';
 import EntityList from './entity-list';
 
 import { ENTITY_TYPES } from './types';
 import Ship from './ship';
+import WorkerSystem from '../systems/worker-system';
 
 const ID_INDEX = 0;
 const BOUNDS_WIDTH_INDEX = 1;
@@ -35,7 +36,7 @@ export default class World {
 			});
 		} else {
 			this.heap = new MemoryHeap({
-				bufferSize: MAX_BYTE_OFFSET_LENGTH
+				bufferSize: 1024 * 100
 			});
 			this.memory = this.heap.allocUI32(World.ALLOCATE_COUNT);
 			this.entities = new EntityList(this, {
@@ -119,7 +120,11 @@ export default class World {
 	}
 
 	update(delta: number) {
-		this.garbageCollect();
+		try {
+			this.garbageCollect();
+		} catch(e) {
+			// TODO: Throws errors if ran when another buffer exists we haven't gotten yet
+		}
 	}
 
 	garbageCollect() {
@@ -129,6 +134,11 @@ export default class World {
 				this.entityCache.delete(entity.pointer);
 			}
 		});
+	}
+
+	growMemoryFromThread(memoryGrows: Array<GrowBufferData>, fromSystem: WorkerSystem) {
+		// Update our memory
+		memoryGrows.forEach(memoryGrown => this.heap.addSharedBuffer(memoryGrown));
 	}
 
 	getId() {
