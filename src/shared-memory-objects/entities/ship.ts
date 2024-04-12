@@ -1,17 +1,11 @@
-import computeAngle from '@/math/compute-angle';
-import distance from '@/math/distance';
-import euclideanDistance from '@/math/euclidean-distance';
 import Entity from './entity';
 import Station from './station';
-// @ts-expect-error
-import PhaserMath from 'phaser/src/math';
-import degreesToRadians from '@/math/degrees-to-radians';
 import { ENTITY_TYPES } from './types';
 import World from './world';
 import { SharedAllocatedMemory } from '@daneren2005/shared-memory-objects';
 
 export default class Ship extends Entity {
-	station: Station;
+	station: Station | undefined;
 	uintMemory: Uint32Array;
 
 	velocityMemory: Float32Array;
@@ -71,7 +65,7 @@ export default class Ship extends Entity {
 	}
 
 	get color(): number {
-		return this.station.color;
+		return this.station?.color ?? 0;
 	}
 
 	die() {
@@ -79,7 +73,7 @@ export default class Ship extends Entity {
 			return;
 		}
 
-		this.station.removeShip(this);
+		this.station?.removeShip(this);
 
 		super.die();
 	}
